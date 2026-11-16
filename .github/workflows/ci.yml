@@ -1,0 +1,47 @@
+name: CI
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [auth, transactions, reports]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: fintrack_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://test:test@localhost:5432/fintrack_test
+      JWT_SECRET: ci-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Create schema
+        run: PGPASSWORD=test psql -h localhost -U test -d fintrack_test -f db/init.sql
+      - run: npm install
+        working-directory: services/${{ matrix.service }}
+      - run: npm run lint
+        working-directory: services/${{ matrix.service }}
+      - name: Test (transactions job enforces the 100% coverage gate)
+        run: npm test
+        working-directory: services/${{ matrix.service }}
+      - uses: actions/upload-artifact@v4
+        if: matrix.service == 'transactions'
+        with:
+          name: coverage-report
+          path: services/transactions/coverage
