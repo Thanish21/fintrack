@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>FinTrack</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  body{font-family:sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem}
+  input,select,button{margin:4px;padding:8px}
+  .cards{display:flex;gap:12px}.card{flex:1;padding:12px;border:1px solid #ccc;border-radius:8px}
+  table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #eee;padding:6px;text-align:left}
+</style></head><body>
+<h1>FinTrack</h1>
+<div id="auth">
+  <input id="email" placeholder="email"><input id="password" type="password" placeholder="password">
+  <button onclick="register()">Register</button><button onclick="login()">Login</button>
+</div>
+<div id="app" style="display:none">
+  <button onclick="logout()">Logout</button>
+  <div class="cards">
+    <div class="card">Income<br><b id="inc">-</b></div>
+    <div class="card">Expenses<br><b id="exp">-</b></div>
+    <div class="card">Balance<br><b id="bal">-</b></div>
+  </div>
+  <h3>Add transaction</h3>
+  <select id="type"><option>income</option><option>expense</option></select>
+  <input id="amount" type="number" step="0.01" placeholder="amount">
+  <input id="category" placeholder="category">
+  <input id="date" type="date">
+  <button onclick="addTx()">Add</button>
+  <h3>Spending by category</h3>
+  <canvas id="chart" height="120"></canvas>
+  <h3>Transactions</h3>
+  <table id="list"></table>
+</div>
+<script>
+const A='http://localhost:4001', T='http://localhost:4002', R='http://localhost:4003';
+let token = localStorage.getItem('token'), chart;
+const hdr = () => ({'Content-Type':'application/json', Authorization:'Bearer '+token});
+const $ = id => document.getElementById(id);
+const money = c => '$' + (c/100).toFixed(2);
+const esc = s => String(s).replace(/[&<>"']/g, c => '&#'+c.charCodeAt(0)+';');
+
+async function register(){
+  const r = await fetch(A+'/register',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:$('email').value,password:$('password').value})});
+  alert(r.ok ? 'Registered. Now log in.' : (await r.json()).error);
+}
+async function login(){
+  const r = await fetch(A+'/login',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:$('email').value,password:$('password').value})});
+  const d = await r.json();
+  if(!r.ok) return alert(d.error);
+  token = d.token; localStorage.setItem('token', token); show();
+}
+function logout(){ localStorage.removeItem('token'); location.reload(); }
+function show(){ $('auth').style.display='none'; $('app').style.display='block'; $('date').valueAsDate=new Date(); refresh(); }
+async function addTx(){
+  const r = await fetch(T+'/transactions',{method:'POST',headers:hdr(),body:JSON.stringify({
+    type:$('type').value, amount_cents:Math.round(parseFloat($('amount').value)*100),
+    category:$('category').value, date:$('date').value})});
+  if(!r.ok) return alert((await r.json()).error);
+  refresh();
+}
+async function del(id){ await fetch(T+'/transactions/'+id,{method:'DELETE',headers:hdr()}); refresh(); }
+async function refresh(){
+  const s = await (await fetch(T+'/transactions/summary',{headers:hdr()})).json();
+  $('inc').textContent = money(s.totalIncome);
+  $('exp').textContent = money(s.totalExpense);
+  $('bal').textContent = money(s.balance);
+  const c = await (await fetch(R+'/reports/by-category',{headers:hdr()})).json();
+  if(chart) chart.destroy();
+  chart = new Chart($('chart'),{type:'doughnut',data:{labels:c.labels,datasets:[{data:c.data.map(x=>x/100)}]}});
+  const list = await (await fetch(T+'/transactions',{headers:hdr()})).json();
+  $('list').innerHTML = '<tr><th>Date</th><th>Type</th><th>Category</th><th>Amount</th><th></th></tr>' +
+    list.map(t=>`<tr><td>${esc(t.date)}</td><td>${esc(t.type)}</td><td>${esc(t.category)}</td>
+    <td>${money(t.amount_cents)}</td><td><button onclick="del(${Number(t.id)})">x</button></td></tr>`).join('');
+}
+if(token) show();
+</script></body></html>

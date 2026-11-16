@@ -1,0 +1,23 @@
+{
+  "name": "fintrack-transactions",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js",
+    "lint": "node --check src/app.js && node --check src/index.js",
+    "test": "jest --coverage"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  },
+  "jest": { "testEnvironment": "node",
+    "collectCoverageFrom": ["src/calculations/**/*.js"],
+    "coverageThreshold": { "global": { "branches": 100, "functions": 100, "lines": 100, "statements": 100 } } }
+}
