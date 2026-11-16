@@ -1,1 +1,1 @@
-const DEFAULT_CATEGORY = 'Uncategorized';
+const DEFAULT_CATEGORY = 'General';
