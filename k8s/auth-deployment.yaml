@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: fintrack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      containers:
+        - name: auth
+          image: fintrack-auth:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4001
