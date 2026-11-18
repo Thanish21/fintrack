@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reports
+  namespace: fintrack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reports
+  template:
+    metadata:
+      labels:
+        app: reports
+    spec:
+      containers:
+        - name: reports
+          image: fintrack-reports:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4003
